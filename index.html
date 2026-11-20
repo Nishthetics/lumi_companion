@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Lumi Companion</title>
+  html, body {
+      background: transparent !important;
+    }
+    .top-bar, .controls {
+      background: rgba(15, 23, 42, 0.75) !important;
+      border-radius: 16px;
+      margin: 8px;
+    }
+  <style>
+    :root {
+      --bg-1: #0f172a;
+      --bg-2: #1e293b;
+      --accent: #f472b6;
+      --accent-2: #38bdf8;
+      --danger: #ef4444;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --card: rgba(30, 41, 59, 0.85);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: radial-gradient(circle at top, var(--bg-2), var(--bg-1));
+      color: var(--text);
+      height: 100dvh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: background 0.5s ease;
+    }
+
+    body.angry-mode {
+      background: radial-gradient(circle at top, #450a0a, #0f172a);
+    }
+
+    /* Top Bar */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      z-index: 20;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 8px #22c55e;
+    }
+
+    .angry-mode .status-dot {
+      background: var(--danger);
+      box-shadow: 0 0 12px var(--danger);
+      animation: pulse 0.8s infinite;
+    }
+
+    .brand h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+
+    .top-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .timer-badge {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .angry-mode .timer-badge {
+      background: rgba(239, 68, 68, 0.25);
+      border-color: var(--danger);
+      color: #fecaca;
+    }
+
+    .icon-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: var(--text);
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      display: grid;
+      place-items: center;
+      transition: transform 0.15s, background 0.2s;
+    }
+
+    .icon-btn:active {
+      transform: scale(0.92);
+    }
+
+    /* Stage where cat walks */
+    .stage {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .floor {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 44px;
+      background: linear-gradient(to top, rgba(255,255,255,0.08), transparent);
+      border-top: 1px dashed rgba(255, 255, 255, 0.12);
+    }
+
+    /* Speech Bubble */
+    .bubble {
+      position: absolute;
+      bottom: 175px;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: min(88vw, 380px);
+      background: rgba(255, 255, 255, 0.96);
+      color: #0f172a;
+      padding: 12px 16px;
+      border-radius: 18px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      line-height: 1.4;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      text-align: center;
+      z-index: 15;
+      transition: all 0.25s ease;
+    }
+
+    .angry-mode .bubble {
+      background: #fee2e2;
+      color: #7f1d1d;
+      border: 2px solid var(--danger);
+    }
+
+    /* Walking Cat Container */
+    .cat-wrapper {
+      position: absolute;
+      bottom: 24px;
+      left: 50px;
+      width: 130px;
+      height: 130px;
+      cursor: pointer;
+      user-select: none;
+      z-index: 10;
+      will-change: transform, left;
+    }
+
+    .cat-svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      transition: transform 0.2s ease;
+    }
+
+    .cat-wrapper.flip .cat-svg {
+      transform: scaleX(-1);
+    }
+
+    /* Animations */
+    .walking .leg-front-1, .walking .leg-back-2 {
+      animation: walkA 0.45s infinite alternate ease-in-out;
+      transform-origin: center top;
+    }
+    .walking .leg-front-2, .walking .leg-back-1 {
+      animation: walkB 0.45s infinite alternate ease-in-out;
+      transform-origin: center top;
+    }
+    .walking .cat-body-group {
+      animation: bob 0.45s infinite alternate ease-in-out;
+    }
+
+    .tail {
+      transform-origin: 28px 68px;
+      animation: tailWag 1.8s infinite ease-in-out;
+    }
+
+    .angry-mode .tail {
+      animation: tailWag 0.35s infinite ease-in-out;
+    }
+
+    .eye {
+      transform-origin: center;
+      animation: blink 4s infinite;
+    }
+
+    .angry-brows {
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+
+    .angry-mode .angry-brows {
+      opacity: 1;
+    }
+
+    .speaking .mouth {
+      animation: talk 0.2s infinite alternate;
+      transform-origin: 96px 56px;
+    }
+
+    @keyframes walkA {
+      from { transform: rotate(-18deg); }
+      to { transform: rotate(18deg); }
+    }
+    @keyframes walkB {
+      from { transform: rotate(18deg); }
+      to { transform: rotate(-18deg); }
+    }
+    @keyframes bob {
+      from { transform: translateY(0px); }
+      to { transform: translateY(-4px); }
+    }
+    @keyframes tailWag {
+      0%, 100% { transform: rotate(-10deg); }
+      50% { transform: rotate(18deg); }
+    }
+    @keyframes blink {
+      0%, 94%, 100% { transform: scaleY(1); }
+      97% { transform: scaleY(0.1); }
+    }
+    @keyframes talk {
+      from { transform: scaleY(0.6); }
+      to { transform: scaleY(1.8); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Bottom Controls */
+    .controls {
+      padding: 14px 16px 20px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 20;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      max-width: 680px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .text-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 14px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .text-input:focus {
+      border-color: var(--accent-2);
+    }
+
+    .btn {
+      border: none;
+      border-radius: 14px;
+      padding: 0 16px;
+      font-weight: 700;
+      font-size: 0.92rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: transform 0.15s, opacity 0.2s;
+    }
+
+    .btn:active {
+      transform: scale(0.95);
+    }
+
+    .btn-mic {
+      background: linear-gradient(135deg, var(--accent), #ec4899);
+      color: white;
+      min-width: 52px;
+    }
+
+    .btn-mic.listening {
+      background: var(--danger);
+      animation: pulse 0.9s infinite;
+    }
+
+    .btn-send {
+      background: var(--accent-2);
+      color: #0f172a;
+    }
+
+    .quick-actions {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--muted);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .chip:hover {
+      color: var(--text);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .break-banner {
+      display: none;
+      max-width: 680px;
+      width: 100%;
+      margin: 0 auto;
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid var(--danger);
+      border-radius: 12px;
+      padding: 10px 14px;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.88rem;
+    }
+
+    .angry-mode .break-banner {
+      display: flex;
+    }
+
+    /* Settings Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(4px);
+      display: none;
+      place-items: center;
+      z-index: 50;
+      padding: 16px;
+    }
+
+    .modal-backdrop.open {
+      display: grid;
+    }
+
+    .modal {
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
+      padding: 22px;
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .modal h2 {
+      font-size: 1.15rem;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field label {
+      font-size: 0.84rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .field input, .field select {
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <header class="top-bar">
+    <div class="brand">
+      <div class="status-dot"></div>
+      <h1 id="appTitle">Lumi</h1>
+    </div>
+    <div class="top-controls">
+      <div class="timer-badge" title="Active Screen Time">
+        <span>⏱</span>
+        <span id="timerText">00:00</span>
+        <span style="opacity:0.6">/</span>
+        <span id="limitText">30m</span>
+      </div>
+      <button class="icon-btn" id="openSettingsBtn" title="Settings">⚙️</button>
+    </div>
+  </header>
+
+  <!-- Walking Stage -->
+  <main class="stage" id="stage">
+    <div class="bubble" id="speechBubble">Hi! Tap the mic or type to talk to me!</div>
+
+    <div class="cat-wrapper walking" id="cat" title="Tap me!">
+      <svg class="cat-svg" viewBox="0 0 130 110" xmlns="http://www.w3.org/2000/svg">
+        <!-- Tail -->
+        <path class="tail" d="M28 68 C8 58, 6 30, 22 28" fill="none" stroke="#f8fafc" stroke-width="8" stroke-linecap="round"/>
+
+        <g class="cat-body-group">
+          <!-- Back Legs -->
+          <rect class="leg-back-1" x="34" y="74" width="10" height="26" rx="5" fill="#cbd5e1"/>
+          <rect class="leg-back-2" x="48" y="74" width="10" height="26" rx="5" fill="#e2e8f0"/>
+          <!-- Front Legs -->
+          <rect class="leg-front-1" x="72" y="74" width="10" height="26" rx="5" fill="#cbd5e1"/>
+          <rect class="leg-front-2" x="84" y="74" width="10" height="26" rx="5" fill="#f8fafc"/>
+
+          <!-- Body -->
+          <ellipse cx="62" cy="66" rx="34" ry="22" fill="#f8fafc"/>
+          <!-- Cute Collar -->
+          <path d="M78 52 Q88 64 82 76" fill="none" stroke="#f472b6" stroke-width="5" stroke-linecap="round"/>
+          <circle cx="85" cy="70" r="4" fill="#facc15"/>
+
+          <!-- Head -->
+          <circle cx="94" cy="46" r="22" fill="#f8fafc"/>
+
+          <!-- Ears -->
+          <polygon points="76,32 82,12 92,26" fill="#f8fafc"/>
+          <polygon points="79,29 83,17 89,26" fill="#fda4af"/>
+          <polygon points="96,26 108,12 112,32" fill="#f8fafc"/>
+          <polygon points="99,26 106,17 109,29" fill="#fda4af"/>
+
+          <!-- Eyes -->
+          <circle class="eye" cx="87" cy="45" r="3.5" fill="#0f172a"/>
+          <circle class="eye" cx="103" cy="45" r="3.5" fill="#0f172a"/>
+          <circle cx="88" cy="44" r="1.1" fill="#ffffff"/>
+          <circle cx="104" cy="44" r="1.1" fill="#ffffff"/>
+
+          <!-- Angry Eyebrows (Hidden unless over screen time) -->
+          <g class="angry-brows" stroke="#dc2626" stroke-width="3" stroke-linecap="round">
+            <line x1="81" y1="38" x2="91" y2="42"/>
+            <line x1="109" y1="38" x2="99" y2="42"/>
+          </g>
+
+          <!-- Nose & Mouth -->
+          <polygon points="93,51 98,51 95.5,54" fill="#fb7185"/>
+          <path class="mouth" d="M91 56 Q95.5 60 100 56" fill="none" stroke="#0f172a" stroke-width="2" stroke-linecap="round"/>
+
+          <!-- Cheeks -->
+          <ellipse cx="80" cy="52" rx="3.5" ry="2" fill="#fda4af" opacity="0.7"/>
+          <ellipse cx="109" cy="52" rx="3.5" ry="2" fill="#fda4af" opacity="0.7"/>
+        </g>
+      </svg>
+    </div>
+
+    <div class="floor"></div>
+  </main>
+
+  <!-- Bottom Controls -->
+  <footer class="controls">
+    <div class="break-banner">
+      <span id="breakWarningText">Screen time limit reached! Take a break now!</span>
+      <button class="btn btn-send" style="padding:8px 12px; background:#fecaca; color:#7f1d1d;" id="resetTimerBtn">I took a break</button>
+    </div>
+
+    <div class="input-row">
+      <button class="btn btn-mic" id="micBtn" title="Speak">🎤</button>
+      <input type="text" class="text-input" id="userInput" placeholder="Talk to Lumi..." />
+      <button class="btn btn-send" id="sendBtn">Send</button>
+    </div>
+
+    <div class="quick-actions">
+      <button class="chip" id="toggleWalkBtn">⏸ Pause Walk</button>
+      <button class="chip" id="langQuickBtn">🌐 Language: Tamil</button>
+      <button class="chip" id="testScoldBtn">😠 Test Scold</button>
+    </div>
+  </footer>
+
+  <!-- Settings Modal -->
+  <div class="modal-backdrop" id="settingsModal">
+    <div class="modal">
+      <h2>Companion Settings</h2>
+
+      <div class="field">
+        <label for="nameInput">Pet Name (Un Ishtam)</label>
+        <input type="text" id="nameInput" placeholder="e.g., Lumi, Kitty, Mani" />
+      </div>
+
+      <div class="field">
+        <label for="langSelect">Language (Tamil / English)</label>
+        <select id="langSelect">
+          <option value="ta">Tamil (தமிழ்)</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="limitInput">Screen Time Limit (Minutes)</label>
+        <input type="number" id="limitInput" min="1" max="300" value="30" />
+      </div>
+
+      <div class="field">
+        <label for="apiKeyInput">Gemini API Key (Optional - for Smart AI Chat)</label>
+        <input type="password" id="apiKeyInput" placeholder="Leave blank for offline mode" />
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn" style="background:rgba(255,255,255,0.1); color:white; padding:10px 16px;" id="closeSettingsBtn">Cancel</button>
+        <button class="btn btn-send" style="padding:10px 18px;" id="saveSettingsBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // 1. STATE & PERSISTENT SETTINGS
+    // ==========================================
+    const defaultSettings = {
+      name: "Lumi",
+      lang: "ta", // "ta" for Tamil, "en" for English
+      limitMinutes: 30,
+      apiKey: ""
+    };
+
+    let settings = JSON.parse(localStorage.getItem("lumi_settings")) || defaultSettings;
+    let usedSeconds = parseInt(localStorage.getItem("lumi_used_seconds") || "0", 10);
+    let isAngry = false;
+    let isWalking = true;
+    let lastScoldTime = 0;
+
+    // DOM Elements
+    const appTitle = document.getElementById("appTitle");
+    const timerText = document.getElementById("timerText");
+    const limitText = document.getElementById("limitText");
+    const speechBubble = document.getElementById("speechBubble");
+    const catEl = document.getElementById("cat");
+    const stageEl = document.getElementById("stage");
+    const userInput = document.getElementById("userInput");
+    const micBtn = document.getElementById("micBtn");
+    const sendBtn = document.getElementById("sendBtn");
+    const toggleWalkBtn = document.getElementById("toggleWalkBtn");
+    const langQuickBtn = document.getElementById("langQuickBtn");
+    const testScoldBtn = document.getElementById("testScoldBtn");
+    const resetTimerBtn = document.getElementById("resetTimerBtn");
+    const breakWarningText = document.getElementById("breakWarningText");
+
+    // Modal Elements
+    const settingsModal = document.getElementById("settingsModal");
+    const nameInput = document.getElementById("nameInput");
+    const langSelect = document.getElementById("langSelect");
+    const limitInput = document.getElementById("limitInput");
+    const apiKeyInput = document.getElementById("apiKeyInput");
+
+    function applySettingsUI() {
+      appTitle.textContent = settings.name;
+      document.title = `${settings.name} Companion`;
+      limitText.textContent = `${settings.limitMinutes}m`;
+      userInput.placeholder = settings.lang === "ta"
+        ? `${settings.name} kitta pesunga...`
+        : `Talk to ${settings.name}...`;
+      langQuickBtn.textContent = settings.lang === "ta"
+        ? "🌐 Language: Tamil"
+        : "🌐 Language: English";
+      breakWarningText.textContent = settings.lang === "ta"
+        ? "Romba neram screen paakura! Udane break edu!"
+        : "Screen time limit reached! Take a break right now!";
+    }
+
+    // ==========================================
+    // 2. WALKING ANIMATION ENGINE
+    // ==========================================
+    let catX = 40;
+    let direction = 1; // 1 = right, -1 = left
+
+    function animateWalk() {
+      if (isWalking) {
+        const maxX = Math.max(40, stageEl.clientWidth - 140);
+        const speed = isAngry ? 2.6 : 1.1; // Walks faster & stomps when angry!
+        catX += direction * speed;
+
+        if (catX >= maxX) {
+          catX = maxX;
+          direction = -1;
+          catEl.classList.add("flip");
+        } else if (catX <= 10) {
+          catX = 10;
+          direction = 1;
+          catEl.classList.remove("flip");
+        }
+        catEl.style.left = `${catX}px`;
+      }
+      requestAnimationFrame(animateWalk);
+    }
+    requestAnimationFrame(animateWalk);
+
+    toggleWalkBtn.addEventListener("click", () => {
+      isWalking = !isWalking;
+      catEl.classList.toggle("walking", isWalking);
+      toggleWalkBtn.textContent = isWalking ? "⏸ Pause Walk" : "▶ Walk";
+    });
+
+    catEl.addEventListener("click", () => {
+      const msg = settings.lang === "ta"
+        ? (isAngry
+            ? `Enna thodadha! Mudhalla phone-a keezha vai!`
+            : `Meow! Naan ${settings.name}. Enna vishayam?`)
+        : (isAngry
+            ? `Don't pet me! Put the screen down right now!`
+            : `Meow! I'm ${settings.name}. How are you doing?`);
+      speak(msg);
+    });
+
+    // ==========================================
+    // 3. VOICE OUTPUT (TAMIL & ENGLISH TTS)
+    // ==========================================
+    function speak(text) {
+      speechBubble.textContent = text;
+      if (!("speechSynthesis" in window)) return;
+
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = settings.lang === "ta" ? "ta-IN" : "en-IN";
+      utter.pitch = isAngry ? 0.9 : 1.25;
+      utter.rate = isAngry ? 1.08 : 1.0;
+
+      // Pick best matching voice
+      const voices = window.speechSynthesis.getVoices();
+      const match = voices.find(v => v.lang.toLowerCase().startsWith(settings.lang));
+      if (match) utter.voice = match;
+
+      utter.onstart = () => catEl.classList.add("speaking");
+      utter.onend = () => catEl.classList.remove("speaking");
+      utter.onerror = () => catEl.classList.remove("speaking");
+
+      window.speechSynthesis.speak(utter);
+    }
+
+    // ==========================================
+    // 4. VOICE INPUT (SPEECH RECOGNITION)
+    // ==========================================
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+micBtn.classList.add("listening");
+        speechBubble.textContent = settings.lang === "ta" ? "Ketkuren... Pesunga..." : "Listening...";
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        userInput.value = transcript;
+        handleUserMessage(transcript);
+      };
+
+      recognition.onerror = () => {
+        micBtn.classList.remove("listening");
+        speechBubble.textContent = settings.lang === "ta"
+          ? "Mic kekala. Type pannunga illa marubadiyum try pannunga."
+          : "Couldn't hear you. Please try again or type.";
+      };
+
+      recognition.onend = () => {
+        micBtn.classList.remove("listening");
+      };
+    }
+
+    micBtn.addEventListener("click", () => {
+      if (!recognition) {
+        alert("Speech recognition is not supported in this browser. Please use Chrome or type your message.");
+        return;
+      }
+      recognition.lang = settings.lang === "ta" ? "ta-IN" : "en-IN";
+      try {
+        recognition.start();
+      } catch (e) {
+        recognition.stop();
+      }
+    });
+
+    // ==========================================
+    // 5. CONVERSATION BRAIN (OFFLINE + OPTIONAL GEMINI API)
+    // ==========================================
+    async function handleUserMessage(text) {
+      const clean = text.trim();
+      if (!clean) return;
+      userInput.value = "";
+
+      if (settings.apiKey) {
+        try {
+          speechBubble.textContent = settings.lang === "ta" ? "Yosikuren..." : "Thinking...";
+          const prompt = `You are ${settings.name}, a cute but strict virtual cat companion living on the user's screen.
+Reply in ${settings.lang === "ta" ? "natural spoken Tamil (Tamil script)" : "friendly English"} in 1 to 2 short sentences.
+${isAngry ? "The user exceeded their screen time! Scold them strictly to take a break." : "Be warm, playful, and caring."}
+User said: "${clean}"`;
+
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${settings.apiKey}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            }
+          );
+          const data = await res.json();
+          const aiReply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (aiReply) {
+            speak(aiReply.trim());
+            return;
+          }
+        } catch (err) {
+          console.error("AI Error, falling back to offline mode:", err);
+        }
+      }
+
+      const lower = clean.toLowerCase();
+      let reply = "";
+
+      if (isAngry) {
+        reply = settings.lang === "ta"
+          ? "Pechu venam! Romba neram aachu, udane screen-a mooditu thanni kudi!"
+          : "No excuses! You've been staring at the screen too long. Take a break now!";
+      } else if (lower.includes("hi") || lower.includes("hello") || lower.includes("vanakkam") || lower.includes("வணக்கம்")) {
+        reply = settings.lang === "ta"
+          ? `வணக்கம்! நான் ${settings.name}. இன்னைக்கு எப்படி இருக்கீங்க?`
+          : `Hello! I'm ${settings.name}. How is your day going?`;
+      } else if (lower.includes("name") || lower.includes("peru") || lower.includes("பெயர்")) {
+        reply = settings.lang === "ta"
+          ? `என் பெயர் ${settings.name}! நீங்க தானே வெச்சீங்க!`
+          : `My name is ${settings.name}! You picked it for me!`;
+      } else if (lower.includes("time") || lower.includes("neram") || lower.includes("நேரம்")) {
+        const mins = Math.floor(usedSeconds / 60);
+        reply = settings.lang === "ta"
+          ? `நீங்க இதுவரைக்கும் ${mins} நிமிஷம் ஸ்கிரீன் பார்த்து இருக்கீங்க.`
+          : `You have used your screen for ${mins} minutes so far.`;
+      } else if (lower.includes("bored") || lower.includes("bore") || lower.includes("போர்")) {
+        reply = settings.lang === "ta"
+          ? "போர் அடிக்குதா? கொஞ்சம் நடந்துட்டு வாங்க, இல்லனா தண்ணி குடிங்க!"
+          : "Feeling bored? Stretch your legs, drink some water, and rest your eyes!";
+      } else if (lower.includes("love") || lower.includes("cute") || lower.includes("அழகு")) {
+        reply = settings.lang === "ta"
+          ? "அய்யோ தேங்க்ஸ்! ஆனா ஸ்கிரீன் டைம் தாண்டினா திட்டுவேன்!"
+          : "Aww thank you! Still, I will scold you if you overuse your screen!";
+      } else {
+        const taReplies = [
+          `நான் ${settings.name}! நீங்க சொல்றத கேட்டுட்டு இருக்கேன். ஆனா கண்ணை பாத்துக்கோங்க!`,
+          "சூப்பர்! வேலை முடிஞ்சதும் கொஞ்சம் ரெஸ்ட் எடுங்க.",
+          "மியாவ்! நான் இங்க தான் நடந்துட்டே உங்களை கவனிச்சிட்டு இருக்கேன்."
+        ];
+        const enReplies = [
+          `I hear you! I'm ${settings.name}, keeping an eye on your screen time.`,
+          "Got it! Don't forget to blink and sit up straight.",
+          "Meow! I'll keep walking around here while you work."
+        ];
+        const list = settings.lang === "ta" ? taReplies : enReplies;
+        reply = list[Math.floor(Math.random() * list.length)];
+      }
+
+      speak(reply);
+    }
+
+    sendBtn.addEventListener("click", () => handleUserMessage(userInput.value));
+    userInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleUserMessage(userInput.value);
+    });
+
+    // ==========================================
+    // 6. SCREEN TIME MONITOR & SCOLDING SYSTEM
+    // ==========================================
+    const taScolds = [
+      "ஏய்! ரொம்ப நேரம் ஸ்கிரீன் பாக்குற! கண்ணு போயிடும், உடனே பிரேக் எடு!",
+      "போதும் நிறுத்து! போன் லேப்டாப்-அ மூடி வெச்சிட்டு கொஞ்ச நேரம் ரெஸ்ட் எடு!",
+      "நான் எத்தனை தடவை சொல்றது? உடனே எந்திரிச்சு தண்ணி குடி!"
+    ];
+
+    const enScolds = [
+      "Hey! You've been on this screen way too long! Take a break right now!",
+      "Stop staring at the screen! Your eyes need rest. Step away!",
+      "Enough screen time! Go drink some water and stretch!"
+    ];
+
+    function triggerScold() {
+      isAngry = true;
+      document.body.classList.add("angry-mode");
+      const list = settings.lang === "ta" ? taScolds : enScolds;
+      const line = list[Math.floor(Math.random() * list.length)];
+      speak(line);
+      lastScoldTime = Date.now();
+    }
+
+    function formatTime(sec) {
+      const m = String(Math.floor(sec / 60)).padStart(2, "0");
+      const s = String(sec % 60).padStart(2, "0");
+      return `${m}:${s}`;
+    }
+
+    setInterval(() => {
+      if (document.hidden) return;
+
+      usedSeconds++;
+      localStorage.setItem("lumi_used_seconds", usedSeconds);
+      timerText.textContent = formatTime(usedSeconds);
+
+      const limitSec = settings.limitMinutes * 60;
+
+      if (usedSeconds === Math.floor(limitSec * 0.8)) {
+        const warn = settings.lang === "ta"
+          ? "கவனம்! உங்க ஸ்கிரீன் டைம் முடிய போகுது."
+          : "Heads up! You are almost at your screen time limit.";
+        speak(warn);
+      }
+
+      if (usedSeconds >= limitSec) {
+        if (!isAngry || Date.now() - lastScoldTime > 45000) {
+          triggerScold();
+        }
+      }
+    }, 1000);
+
+    testScoldBtn.addEventListener("click", triggerScold);
+
+    resetTimerBtn.addEventListener("click", () => {
+      usedSeconds = 0;
+      isAngry = false;
+      localStorage.setItem("lumi_used_seconds", "0");
+      document.body.classList.remove("angry-mode");
+      timerText.textContent = "00:00";
+      const msg = settings.lang === "ta"
+        ? "குட்! பிரேக் எடுத்ததுக்கு நன்றி. இப்போ நம்ம பிரெண்ட்ஸ்!"
+        : "Good job taking a break! I'm happy again!";
+      speak(msg);
+    });
+
+    // ==========================================
+    // 7. SETTINGS MODAL & QUICK LANGUAGE TOGGLE
+    // ==========================================
+    document.getElementById("openSettingsBtn").addEventListener("click", () => {
+      nameInput.value = settings.name;
+      langSelect.value = settings.lang;
+      limitInput.value = settings.limitMinutes;
+      apiKeyInput.value = settings.apiKey;
+      settingsModal.classList.add("open");
+    });
+
+    document.getElementById("closeSettingsBtn").addEventListener("click", () => {
+      settingsModal.classList.remove("open");
+    });
+
+    document.getElementById("saveSettingsBtn").addEventListener("click", () => {
+      settings.name = nameInput.value.trim() || "Lumi";
+      settings.lang = langSelect.value;
+      settings.limitMinutes = Math.max(1, parseInt(limitInput.value, 10) || 30);
+      settings.apiKey = apiKeyInput.value.trim();
+
+      localStorage.setItem("lumi_settings", JSON.stringify(settings));
+      applySettingsUI();
+      settingsModal.classList.remove("open");
+
+      const confirmMsg = settings.lang === "ta"
+        ? `ஓகே! என் பெயர் ${settings.name}. இனிமே தமிழ்ல பேசுறேன்!`
+        : `Saved! My name is ${settings.name} and I'll speak in English!`;
+      speak(confirmMsg);
+    });
+
+    langQuickBtn.addEventListener("click", () => {
+      settings.lang = settings.lang === "ta" ? "en" : "ta";
+      localStorage.setItem("lumi_settings", JSON.stringify(settings));
+      applySettingsUI();
+      speak(settings.lang === "ta" ? "தமிழ் ஆன் பண்ணியாச்சு!" : "Switched to English!");
+    });
+
+    applySettingsUI();
+    timerText.textContent = formatTime(usedSeconds);
+  </script>
+</body>
+</html>
